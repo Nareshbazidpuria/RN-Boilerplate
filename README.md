@@ -1,97 +1,296 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# React Native + NativeWind Boilerplate
 
-# Getting Started
+> Tested & working setup for **React Native 0.80.0** with **NativeWind v4**, New Architecture enabled, supporting iOS & Android.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+## Tech Stack
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+| Package                          | Version   | Notes                                   |
+| -------------------------------- | --------- | --------------------------------------- |
+| `react-native`                   | `0.80.0`  | ✅ Stable — do NOT use 0.84.x (nightly) |
+| `react`                          | `19.1.0`  | Matches RN 0.80.0                       |
+| `nativewind`                     | `^4.1.23` | Tailwind CSS for React Native           |
+| `tailwindcss`                    | `^3.4.15` | v3 only — v4 not yet supported          |
+| `react-native-reanimated`        | `^3.18.0` | Required by NativeWind v4               |
+| `react-native-worklets`          | `latest`  | Required by reanimated 3.18+            |
+| `react-native-safe-area-context` | `^5.5.1`  | Compatible with RN 0.80                 |
+| `@react-native-community/cli`    | `19.0.0`  | Pinned to match RN version              |
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+---
 
-```sh
-# Using npm
-npm start
+## Prerequisites
 
-# OR using Yarn
-yarn start
+- **Node.js** >= 18.x (22.x recommended)
+- **OpenJDK 17** — required for Android
+- **Xcode 15+** — iOS only (macOS)
+- **CocoaPods** — iOS dependency manager
+- **Android Studio** — Android SDK & emulator
+
+---
+
+## Quick Start
+
+```bash
+# 1. Create project (pin CLI + RN version)
+npx @react-native-community/cli@19.0.0 init MyApp --version 0.80.0
+cd MyApp
+
+# 2. Install dependencies
+npm install nativewind@^4.1.23 tailwindcss@^3.4.15
+npm install react-native-reanimated@^3.18.0
+npm install react-native-safe-area-context@^5.5.1
+npm install react-native-worklets
+
+# 3. Init Tailwind
+npx tailwindcss init
+
+# 4. iOS
+cd ios && pod install && cd ..
+
+# 5. Run
+npx react-native start --reset-cache
+npx react-native run-ios        # new terminal
+npx react-native run-android    # or this
 ```
 
-## Step 2: Build and run your app
+---
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## Configuration
 
-### Android
+### `tailwind.config.js`
 
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./App.{js,jsx,ts,tsx}', './src/**/*.{js,jsx,ts,tsx}'],
+  presets: [require('nativewind/preset')],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
 ```
 
-### iOS
+### `global.css`
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 ```
 
-Then, and every time you update your native dependencies, run:
+### `babel.config.js`
 
-```sh
-bundle exec pod install
+> ⚠️ `nativewind/babel` must be a **preset**, not a plugin. `reanimated/plugin` must be **last**.
+
+```js
+module.exports = {
+  presets: ['module:@react-native/babel-preset', 'nativewind/babel'],
+  plugins: [
+    'react-native-worklets/plugin',
+    'react-native-reanimated/plugin', // must be last
+  ],
+};
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+### `metro.config.js`
 
-```sh
-# Using npm
-npm run ios
+```js
+const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
-# OR using Yarn
-yarn ios
+const config = mergeConfig(getDefaultConfig(__dirname), {});
+
+module.exports = withNativeWind(config, { input: './global.css' });
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+### `nativewind-env.d.ts` (TypeScript only)
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+```ts
+/// <reference types="nativewind/types" />
+```
 
-## Step 3: Modify your app
+---
 
-Now that you have successfully run the app, let's make changes!
+## `ios/Podfile`
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+The default generated Podfile works as-is for RN 0.80.0. No extra build settings needed.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+```ruby
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+platform :ios, min_ios_version_supported
+prepare_react_native_project!
 
-## Congratulations! :tada:
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
 
-You've successfully run and modified your React Native App. :partying_face:
+target 'MyApp' do
+  config = use_native_modules!
 
-### Now what?
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+    )
+  end
+end
+```
 
-# Troubleshooting
+---
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+## `App.tsx` Boilerplate
 
-# Learn More
+> ⚠️ `global.css` must be the **first** import.
 
-To learn more about React Native, take a look at the following resources:
+```tsx
+import './global.css';
+import React from 'react';
+import { View, Text, ScrollView } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView className="flex-1 bg-white">
+        <ScrollView className="flex-1 p-4">
+          <View className="items-center justify-center py-10">
+            <Text className="text-3xl font-bold text-blue-600">
+              NativeWind is working! 🎉
+            </Text>
+            <Text className="text-gray-500 mt-2 text-base">
+              React Native {require('react-native/package.json').version}
+            </Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
+```
+
+---
+
+## Project Structure
+
+```
+MyApp/
+├── android/
+├── ios/
+│   └── Podfile
+├── src/
+│   ├── components/        # Reusable UI components
+│   ├── screens/           # Screen-level components
+│   ├── navigation/        # React Navigation config
+│   └── utils/             # Helpers and constants
+├── App.tsx                # Entry point — import global.css first
+├── global.css             # Tailwind directives
+├── tailwind.config.js
+├── babel.config.js
+├── metro.config.js
+├── nativewind-env.d.ts    # TypeScript className support
+└── package.json
+```
+
+---
+
+## NativeWind Usage
+
+### Basic Components
+
+```tsx
+// Card
+<View className="bg-white rounded-2xl shadow p-4 mb-4 border border-gray-100">
+  <Text className="text-lg font-bold text-gray-900">Title</Text>
+  <Text className="text-sm text-gray-500 mt-1">Subtitle</Text>
+</View>
+
+// Button
+<TouchableOpacity className="bg-blue-600 py-3 px-6 rounded-xl">
+  <Text className="text-white font-semibold text-center">Click me</Text>
+</TouchableOpacity>
+
+// Input
+<TextInput
+  className="border border-gray-300 rounded-xl px-4 py-3 text-gray-900"
+  placeholder="Enter text..."
+/>
+```
+
+### Conditional Classes
+
+```tsx
+// ✅ Use clsx for conditional classes
+import { clsx } from 'clsx'; // npm install clsx
+
+<View
+  className={clsx('p-4 rounded-xl', isActive ? 'bg-blue-600' : 'bg-gray-100')}
+/>;
+
+// ⚠️ Never construct class names dynamically
+// ❌ className={`bg-${color}-600`}   ← Tailwind can't detect this
+// ✅ className={color === 'blue' ? 'bg-blue-600' : 'bg-red-600'}
+```
+
+---
+
+## Full Clean Rebuild
+
+Run this sequence when you hit unexplained build errors:
+
+```bash
+# 1. Clear Xcode DerivedData
+rm -rf ~/Library/Developer/Xcode/DerivedData
+
+# 2. Remove node_modules
+rm -rf node_modules && rm package-lock.json
+
+# 3. Reinstall packages
+npm install
+
+# 4. Clean and reinstall pods
+cd ios
+pod deintegrate
+rm -rf Pods Podfile.lock
+pod install
+cd ..
+
+# 5. Clear Metro cache and run
+npx react-native start --reset-cache
+# In a new terminal:
+npx react-native run-ios
+```
+
+---
+
+## Common Errors & Fixes
+
+| Error                                               | Cause                    | Fix                                    |
+| --------------------------------------------------- | ------------------------ | -------------------------------------- |
+| `RNWorklets spec not found`                         | Wrong reanimated version | Use `reanimated@3.18.x` with RN 0.80   |
+| `Cannot find module 'react-native-worklets/plugin'` | Missing package          | `npm install react-native-worklets`    |
+| `folly/coro/Coroutine.h not found`                  | RN version too new       | Downgrade to RN 0.80.0                 |
+| `non-modular-include-in-framework-module`           | RN/reanimated mismatch   | Use exact version matrix above         |
+| `xcodebuild exited with error 65`                   | Generic Xcode failure    | Run full clean rebuild                 |
+| `className` not recognized in TS                    | Missing type declaration | Add `nativewind-env.d.ts`              |
+| Metro bundler cache issues                          | Stale cache              | `npx react-native start --reset-cache` |
+
+---
+
+## Why RN 0.80.0 and not 0.84.x?
+
+RN **0.84.x is a nightly/canary build** — not a stable release. The broader ecosystem (reanimated, safe-area-context, CocoaPods) has not caught up to it, causing broken pod resolution and C++ header mismatches. **RN 0.80.0** is the latest stable release with full ecosystem support.
