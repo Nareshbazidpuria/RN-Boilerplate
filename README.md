@@ -169,7 +169,7 @@ export default function App() {
       <SafeAreaView className="flex-1 bg-white">
         <ScrollView className="flex-1 p-4">
           <View className="items-center justify-center py-10">
-            <Text className="text-3xl font-bold text-blue-600">
+            <Text className="text-3xl font-bold text-sky-600">
               NativeWind is working! 🎉
             </Text>
             <Text className="text-gray-500 mt-2 text-base">
